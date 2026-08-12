@@ -17,9 +17,10 @@ class ProductTable(Base):
     description: Mapped[str] = mapped_column(String, nullable=False)
 
     product_images = relationship("ProductImageTable", back_populates="product", cascade="all, delete-orphan")
-    price = relationship("PriceTable", back_populates="product", cascade="all, delete-orphan")
-    file_path = relationship("FilePathTable", back_populates="product", cascade="all, delete-orphan")
-    download_links = relationship("DownloadLinkTable", back_populates="product", cascade="all, delete-orphan")
+    prices = relationship("PriceTable", back_populates="product", cascade="all, delete-orphan")
+    file_paths = relationship("FilePathTable", back_populates="product", cascade="all, delete-orphan")
+    order_products = relationship("OrderProductTable", back_populates="product", cascade="all, delete-orphan")
+
 
 class CategoryTable(Base):
     __tablename__ = "categories"
@@ -32,6 +33,7 @@ class CategoryTable(Base):
 class ProductImageTable(Base):
     __tablename__ = "product_images"
 
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     product_id: Mapped[int] = mapped_column(Integer, ForeignKey("products.id"), nullable=False)
     image_path: Mapped[str] = mapped_column(String, nullable=False)
     order: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -42,32 +44,36 @@ class ProductImageTable(Base):
 class PriceTable(Base):
     __tablename__ = "prices"
 
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     product_id: Mapped[int] = mapped_column(Integer, ForeignKey("products.id"), nullable=False)
     price: Mapped[float] = mapped_column(Double, nullable=False)
     valid_from: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=False)
+    valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    product = relationship("ProductTable", back_populates="price")
+    product = relationship("ProductTable", back_populates="prices")
 
 
 class FilePathTable(Base):
     __tablename__ = "file_paths"
 
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     product_id: Mapped[int] = mapped_column(Integer, ForeignKey("products.id"), nullable=False)
     path: Mapped[str] = mapped_column(String, nullable=False)
 
-    product = relationship("ProductTable", back_populates="file_path")
+    product = relationship("ProductTable", back_populates="file_paths")
+    download_links = relationship("DownloadLinkTable", back_populates="file_path", cascade="all, delete-orphan")
 
 
 class DownloadLinkTable(Base):
     __tablename__ = "download_links"
 
-    file_path: Mapped[int] = mapped_column(Integer, ForeignKey("file_paths.id"), nullable=False)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    file_path_id: Mapped[int] = mapped_column(Integer, ForeignKey("file_paths.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=False)
-    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=False)
+    valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    product = relationship("ProductTable", back_populates="download_links")
+    file_path = relationship("FilePathTable", back_populates="download_links")
 
 
 class OrderTable(Base):
@@ -85,10 +91,12 @@ class OrderTable(Base):
 class OrderProductTable(Base):
     __tablename__ = "order_products"
 
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     order_id: Mapped[int] = mapped_column(Integer, ForeignKey("orders.id"), nullable=False)
     product_id: Mapped[int] = mapped_column(Integer, ForeignKey("products.id"), nullable=False)
 
     order = relationship("OrderTable", back_populates="order_products")
+    product = relationship("ProductTable", back_populates="order_products")
 
 
 class AccountTable(Base):
@@ -98,7 +106,7 @@ class AccountTable(Base):
     username: Mapped[str] = mapped_column(String, nullable=False)
     email: Mapped[str] = mapped_column(String, nullable=False)
     phone_number: Mapped[str | None] = mapped_column(String, nullable=True)
-    password_hash: Mapped[String] = mapped_column(String, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String, nullable=False)
     role: Mapped[UserRole] = mapped_column(SAEnum(UserRole), nullable=False, default=UserRole.user)
 
     sessions = relationship("SessionTable", back_populates="account", cascade="all, delete-orphan")
@@ -107,12 +115,10 @@ class AccountTable(Base):
 class SessionTable(Base):
     __tablename__ = "sessions"
 
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     account_id: Mapped[int] = mapped_column(Integer, ForeignKey("accounts.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
 
     account = relationship("AccountTable", back_populates="sessions")
-
-
-
