@@ -1,11 +1,12 @@
-from sqlalchemy import String, Integer, ForeignKey, Double, DateTime, Enum as SAEnum
-from sqlalchemy.orm import declarative_base, relationship, mapped_column, Mapped
+from sqlalchemy import String, Integer, ForeignKey, Double, DateTime, Enum as SAEnum, Numeric
+from sqlalchemy.orm import DeclarativeBase, relationship, mapped_column, Mapped
 from datetime import datetime
+from decimal import Decimal
+from database.enums import OrderStatus, UserRole
 
-from enums import OrderStatus, UserRole
 
-
-Base = declarative_base()
+class Base(DeclarativeBase):
+    ...
 
 
 class ProductTable(Base):
@@ -19,14 +20,13 @@ class ProductTable(Base):
     product_images = relationship("ProductImageTable", back_populates="product", cascade="all, delete-orphan")
     prices = relationship("PriceTable", back_populates="product", cascade="all, delete-orphan")
     file_paths = relationship("FilePathTable", back_populates="product", cascade="all, delete-orphan")
-    order_products = relationship("OrderProductTable", back_populates="product", cascade="all, delete-orphan")
 
 
 class CategoryTable(Base):
     __tablename__ = "categories"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     description: Mapped[str] = mapped_column(String, nullable=False)
 
 
@@ -46,7 +46,7 @@ class PriceTable(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     product_id: Mapped[int] = mapped_column(Integer, ForeignKey("products.id"), nullable=False)
-    price: Mapped[float] = mapped_column(Double, nullable=False)
+    price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     valid_from: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
@@ -88,15 +88,25 @@ class OrderTable(Base):
     order_products = relationship("OrderProductTable", back_populates="order", cascade="all, delete-orphan")
 
 
+class ProductSnapshotTable(Base):
+    __tablename__ = "product_snapshots"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+
+    order_products = relationship("OrderProductTable", back_populates="product")
+
+
 class OrderProductTable(Base):
     __tablename__ = "order_products"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     order_id: Mapped[int] = mapped_column(Integer, ForeignKey("orders.id"), nullable=False)
-    product_id: Mapped[int] = mapped_column(Integer, ForeignKey("products.id"), nullable=False)
+    product_id: Mapped[int] = mapped_column(Integer, ForeignKey("product_snapshots.id"), nullable=False)
 
     order = relationship("OrderTable", back_populates="order_products")
-    product = relationship("ProductTable", back_populates="order_products")
+    product = relationship("ProductSnapshotTable", back_populates="order_products")
 
 
 class AccountTable(Base):

@@ -1,0 +1,6 @@
+class NotFoundException(Exception):
+    ...
+
+
+class AlreadyExistsException(Exception):
+    ...
