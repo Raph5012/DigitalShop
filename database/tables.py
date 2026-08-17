@@ -22,6 +22,7 @@ class ProductTable(Base):
     file_paths = relationship("FilePathTable", back_populates="product", cascade="all, delete-orphan")
 
 
+
 class CategoryTable(Base):
     __tablename__ = "categories"
 
@@ -61,19 +62,18 @@ class FilePathTable(Base):
     path: Mapped[str] = mapped_column(String, nullable=False)
 
     product = relationship("ProductTable", back_populates="file_paths")
-    download_links = relationship("DownloadLinkTable", back_populates="file_path", cascade="all, delete-orphan")
 
 
 class DownloadLinkTable(Base):
     __tablename__ = "download_links"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    file_path_id: Mapped[int] = mapped_column(Integer, ForeignKey("file_paths.id"), nullable=False)
+    product_id: Mapped[int] = mapped_column(Integer, ForeignKey("products.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    file_path = relationship("FilePathTable", back_populates="download_links")
+    product = relationship("ProductTable")
 
 
 class OrderTable(Base):
@@ -92,10 +92,12 @@ class ProductSnapshotTable(Base):
     __tablename__ = "product_snapshots"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    product_id: Mapped[int] = mapped_column(Integer, ForeignKey("products.id"), nullable=False)
     name: Mapped[str] = mapped_column(String, nullable=False)
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
 
     order_products = relationship("OrderProductTable", back_populates="product")
+    product = relationship("ProductTable")
 
 
 class OrderProductTable(Base):
@@ -130,5 +132,6 @@ class SessionTable(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    session_token_hash: Mapped[str] = mapped_column(String, nullable=False)
 
     account = relationship("AccountTable", back_populates="sessions")

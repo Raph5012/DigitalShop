@@ -126,7 +126,7 @@ class FilePath(BaseModel):
 
 class DownloadLink(BaseModel):
     id: int | None = None
-    file_path_id: int
+    product_id: int
     created_at: UtcDatetime
     valid_until: UtcDatetimeOrNone
     revoked_at: UtcDatetimeOrNone
@@ -138,7 +138,6 @@ class Order(BaseModel):
     email: EmailStr
     order_time: UtcDatetime
     status: enums.OrderStatus
-    ordered_products: list[int] = Field(default_factory=list)
     product_snapshots: list['ProductSnapshot'] = Field(default_factory=list)
 
     @field_validator(field='phone_number', mode='after')
@@ -149,9 +148,9 @@ class Order(BaseModel):
 
         return phone_number
 
-    @field_validator(field='ordered_products', mode='after')
+    @field_validator(field='product_snapshots', mode='after')
     @classmethod
-    def check_for_at_least_one_order_product(cls, products: list[int]) -> list[int]:
+    def check_for_at_least_one_order_product(cls, products: list['ProductSnapshot']) -> list['ProductSnapshot']:
         if len(products) == 0:
             raise ValueError("Product count must be greater than 0")
 
@@ -163,6 +162,7 @@ class ProductSnapshot(BaseModel):
 
     name: str = Field(max_length=MAX_LENGTH_FOR_NAMES)
     price: PriceType
+    product_id: int
 
 
 class Account(BaseModel):
@@ -191,3 +191,4 @@ class Session(BaseModel):
     created_at: UtcDatetime
     ends_at: UtcDatetime
     revoked_at: UtcDatetimeOrNone
+    session_token_hash: str
