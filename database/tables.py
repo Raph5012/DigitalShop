@@ -1,4 +1,4 @@
-from sqlalchemy import String, Integer, ForeignKey, Double, DateTime, Enum as SAEnum, Numeric
+from sqlalchemy import String, Integer, ForeignKey, DateTime, Enum as SAEnum, Numeric
 from sqlalchemy.orm import DeclarativeBase, relationship, mapped_column, Mapped
 from datetime import datetime
 from decimal import Decimal
@@ -85,7 +85,7 @@ class OrderTable(Base):
     order_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     status: Mapped[OrderStatus] = mapped_column(SAEnum(OrderStatus), nullable=False)
 
-    order_products = relationship("OrderProductTable", back_populates="order", cascade="all, delete-orphan")
+    product_snapshots = relationship("ProductSnapshotTable", back_populates="order", cascade="all, delete-orphan")
 
 
 class ProductSnapshotTable(Base):
@@ -93,22 +93,12 @@ class ProductSnapshotTable(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     product_id: Mapped[int] = mapped_column(Integer, ForeignKey("products.id"), nullable=False)
+    order_id: Mapped[int] = mapped_column(Integer, ForeignKey("orders.id"), nullable=False)
     name: Mapped[str] = mapped_column(String, nullable=False)
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
 
-    order_products = relationship("OrderProductTable", back_populates="product")
+    order = relationship("OrderTable", back_populates="product_snapshots")
     product = relationship("ProductTable")
-
-
-class OrderProductTable(Base):
-    __tablename__ = "order_products"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    order_id: Mapped[int] = mapped_column(Integer, ForeignKey("orders.id"), nullable=False)
-    product_id: Mapped[int] = mapped_column(Integer, ForeignKey("product_snapshots.id"), nullable=False)
-
-    order = relationship("OrderTable", back_populates="order_products")
-    product = relationship("ProductSnapshotTable", back_populates="order_products")
 
 
 class AccountTable(Base):
