@@ -12,3 +12,6 @@ class AuthError(Exception):
 
 class CategoryError(Exception):
     ...
+
+class FailedToSendException(Exception):
+    ...
