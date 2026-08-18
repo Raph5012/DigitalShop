@@ -72,8 +72,8 @@ class OrderRepository(OrderRepositoryProtocol):
         if email is not None:
             stmt = stmt.where(OrderTable.email == email)
 
-        order: list[OrderTable] = self._session.execute(stmt).scalars().all()
-        return order
+        orders: list[OrderTable] = self._session.execute(stmt).scalars().all()
+        return orders
 
     def create(self, order: Order) -> Order:
         if order.id is not None:
