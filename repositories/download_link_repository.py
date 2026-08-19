@@ -1,6 +1,7 @@
 from database.tables import DownloadLinkTable
 from typing import Protocol
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 from .models import DownloadLink
 from .exceptions import *
 
@@ -19,6 +20,12 @@ class DownloadLinkRepositoryProtocol(Protocol):
     def get_download_link_by_id(self, download_link_id: int) -> DownloadLink | None:
         ...
 
+    def get_download_link_by_token_hash(self, token_hash: str) -> DownloadLink | None:
+        ...
+
+    def get_download_links_by_order_id(self, order_id: int) -> list[DownloadLink]:
+        ...
+
 
 class DownloadLinkRepository(DownloadLinkRepositoryProtocol):
     def __init__(self, session: Session) -> None:
@@ -28,6 +35,7 @@ class DownloadLinkRepository(DownloadLinkRepositoryProtocol):
         return DownloadLinkTable(
             id=dl.id,
             product_id=dl.product_id,
+            order_id=dl.order_id,
             created_at=dl.created_at,
             valid_until=dl.valid_until,
             revoked_at=dl.revoked_at,
@@ -38,6 +46,7 @@ class DownloadLinkRepository(DownloadLinkRepositoryProtocol):
         return DownloadLink(
             id=dl.id,
             product_id=dl.product_id,
+            order_id=dl.order_id,
             created_at=dl.created_at,
             valid_until=dl.valid_until,
             revoked_at=dl.revoked_at,
@@ -61,6 +70,7 @@ class DownloadLinkRepository(DownloadLinkRepositoryProtocol):
             raise NotFoundException(f"DownloadLink with id={download_link.id} not found")
 
         dl_orm.product_id = download_link.product_id
+        dl_orm.order_id = download_link.order_id
         dl_orm.created_at = download_link.created_at
         dl_orm.valid_until = download_link.valid_until
         dl_orm.revoked_at = download_link.revoked_at
@@ -82,3 +92,17 @@ class DownloadLinkRepository(DownloadLinkRepositoryProtocol):
             return None
 
         return self._to_domain(dl_orm)
+
+    def get_download_link_by_token_hash(self, token_hash: str) -> DownloadLink | None:
+        stmt = select(DownloadLinkTable).where(DownloadLinkTable.token_hash == token_hash)
+        dl_orm: DownloadLinkTable | None = self._session.execute(stmt).scalar_one_or_none()
+        if dl_orm is None:
+            return None
+
+        return self._to_domain(dl_orm)
+
+    def get_download_links_by_order_id(self, order_id: int) -> list[DownloadLink]:
+        stmt = select(DownloadLinkTable).where(DownloadLinkTable.order_id == order_id)
+        dl_orms = self._session.execute(stmt).scalars().all()
+        return [self._to_domain(dl) for dl in dl_orms]
+    

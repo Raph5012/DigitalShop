@@ -15,3 +15,7 @@ class CategoryError(Exception):
 
 class FailedToSendException(Exception):
     ...
+
+class LinkError(Exception):
+    ...
+    

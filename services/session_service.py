@@ -1,6 +1,7 @@
 import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone
+from typing import Protocol
 
 from repositories.models import Session
 from repositories.session_repository import SessionRepositoryProtocol
@@ -8,7 +9,24 @@ from .config import SESSION_LIFETIME
 from .exceptions import AuthError
 
 
-class SessionService:
+class SessionServiceProtocol(Protocol):
+    def create(self, account_id: int) -> str:
+        ...
+
+    def get_account_id(self, raw_token: str) -> int | None:
+        ...
+
+    def rotate(self, raw_token: str) -> str:
+        ...
+
+    def revoke(self, raw_token: str) -> None:
+        ...
+
+    def revoke_all(self, account_id: int) -> None:
+        ...
+
+
+class SessionService(SessionServiceProtocol):
     def __init__(
         self,
         sessions: SessionRepositoryProtocol,

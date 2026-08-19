@@ -127,6 +127,7 @@ class FilePath(BaseModel):
 class DownloadLink(BaseModel):
     id: int | None = None
     product_id: int
+    order_id: int
     created_at: UtcDatetime
     valid_until: UtcDatetimeOrNone
     revoked_at: UtcDatetimeOrNone
