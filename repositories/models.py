@@ -130,6 +130,7 @@ class DownloadLink(BaseModel):
     created_at: UtcDatetime
     valid_until: UtcDatetimeOrNone
     revoked_at: UtcDatetimeOrNone
+    token_hash: str
 
 
 class Order(BaseModel):

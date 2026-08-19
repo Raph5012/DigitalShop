@@ -72,6 +72,7 @@ class DownloadLinkTable(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    token_hash: Mapped[str] = mapped_column(String, nullable=False)
 
     product = relationship("ProductTable")
 

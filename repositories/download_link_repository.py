@@ -30,7 +30,8 @@ class DownloadLinkRepository(DownloadLinkRepositoryProtocol):
             product_id=dl.product_id,
             created_at=dl.created_at,
             valid_until=dl.valid_until,
-            revoked_at=dl.revoked_at
+            revoked_at=dl.revoked_at,
+            token_hash=dl.token_hash
         )
 
     def _to_domain(self, dl: DownloadLinkTable) -> DownloadLink:
@@ -39,7 +40,8 @@ class DownloadLinkRepository(DownloadLinkRepositoryProtocol):
             product_id=dl.product_id,
             created_at=dl.created_at,
             valid_until=dl.valid_until,
-            revoked_at=dl.revoked_at
+            revoked_at=dl.revoked_at,
+            token_hash=dl.token_hash
         )
 
     def create_download_link(self, download_link: DownloadLink) -> DownloadLink:
@@ -62,6 +64,7 @@ class DownloadLinkRepository(DownloadLinkRepositoryProtocol):
         dl_orm.created_at = download_link.created_at
         dl_orm.valid_until = download_link.valid_until
         dl_orm.revoked_at = download_link.revoked_at
+        dl_orm.token_hash = download_link.token_hash
 
         self._session.flush()
 
