@@ -1,2 +1,6 @@
 class FailedToSendException(Exception):
     ...
+
+
+class CheckoutSessionException(Exception):
+    ...

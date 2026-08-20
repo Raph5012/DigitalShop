@@ -1,5 +1,5 @@
-from database.tables import OrderTable, ProductSnapshotTable
-from .models import Order, ProductSnapshot
+from database.tables import OrderTable, ProductSnapshotTable, CheckoutTable
+from .models import Order, ProductSnapshot, Checkout
 from .exceptions import *
 from typing import Protocol
 from sqlalchemy.orm import Session, selectinload
@@ -44,6 +44,20 @@ class OrderRepository(OrderRepositoryProtocol):
             product_id=snapshot.product_id
         )
 
+    def _checkout_to_orm(self, checkout: Checkout) -> CheckoutTable:
+        return CheckoutTable(
+            provider=checkout.provider,
+            session_id=checkout.session_id
+        )
+
+    def _checkout_to_domain(self, checkout: CheckoutTable) -> Checkout:
+        return Checkout(
+            id=checkout.id,
+            order_id=checkout.order_id,
+            provider=checkout.provider,
+            session_id=checkout.session_id
+        )
+
     def _order_to_domain(self, order: OrderTable) -> Order:
         return Order(
             id=order.id,
@@ -51,7 +65,8 @@ class OrderRepository(OrderRepositoryProtocol):
             email=order.email,
             order_time=order.order_time,
             status=order.status,
-            product_snapshots=[self._snapshot_to_domain(snapshot) for snapshot in order.product_snapshots]
+            product_snapshots=[self._snapshot_to_domain(snapshot) for snapshot in order.product_snapshots],
+            checkout=self._checkout_to_domain(order.checkout) if order.checkout is not None else None
         )
 
     def _get_orm_orders(self, 
@@ -61,7 +76,8 @@ class OrderRepository(OrderRepositoryProtocol):
         stmt = (
             select(OrderTable)
             .options(
-                selectinload(OrderTable.product_snapshots)
+                selectinload(OrderTable.product_snapshots),
+                selectinload(OrderTable.checkout)
             )
         )
 
@@ -84,7 +100,8 @@ class OrderRepository(OrderRepositoryProtocol):
             email=order.email,
             order_time=order.order_time,
             status=order.status,
-            product_snapshots=[self._snapshot_to_orm(s) for s in order.product_snapshots]
+            product_snapshots=[self._snapshot_to_orm(s) for s in order.product_snapshots],
+            checkout=self._checkout_to_orm(order.checkout) if order.checkout is not None else None
         )
         self._session.add(orm_order)
         self._session.flush()
@@ -106,6 +123,12 @@ class OrderRepository(OrderRepositoryProtocol):
         orm_order.order_time = order.order_time
         orm_order.status = order.status
         orm_order.product_snapshots = [self._snapshot_to_orm(s) for s in order.product_snapshots]
+        if order.checkout is not None:
+            if orm_order.checkout is not None:
+                orm_order.checkout.provider = order.checkout.provider
+                orm_order.checkout.session_id = order.checkout.session_id
+            else:
+                orm_order.checkout = self._checkout_to_orm(order.checkout)
 
         self._session.flush()
 

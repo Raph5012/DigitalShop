@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, AfterValidator, field_validator, EmailStr
-from typing import Annotated, Any
+from typing import Annotated, Any, Optional
 from datetime import datetime, timezone
 from re import fullmatch
 from decimal import Decimal
@@ -46,7 +46,7 @@ class Product(BaseModel):
     prices: list['ProductPrice'] = Field(default_factory=list)
     download_paths: list['FilePath'] = Field(default_factory=list)
 
-    @field_validator(field='prices', mode='after')
+    @field_validator('prices', mode='after')
     @classmethod
     def _ensure_only_one_valid_price(cls, prices: list['ProductPrice']) -> list['ProductPrice']:
         price_found: bool = False
@@ -61,7 +61,7 @@ class Product(BaseModel):
 
         return prices
 
-    @field_validator(field='images', mode='after')
+    @field_validator('images', mode='after')
     @classmethod
     def _ensure_no_images_with_the_same_order(cls, images: list['ProductImage']) -> list['ProductImage']:
         image_orders = [image.order for image in images]
@@ -70,7 +70,7 @@ class Product(BaseModel):
         else:
             raise ValueError("At least two images have the same order")
 
-    @field_validator(field='download_paths', mode='after')
+    @field_validator('download_paths', mode='after')
     @classmethod
     def _ensure_at_least_one_download(cls, downloads: list['FilePath']) -> list['FilePath']:
         if downloads:
@@ -91,7 +91,7 @@ class ProductImage(BaseModel):
     image_path: str
     order: int
 
-    @field_validator(field='order', mode='after')
+    @field_validator('order', mode='after')
     @classmethod
     def _check_order_positive(cls, order: int) -> int:
         if order <= 0:
@@ -117,11 +117,13 @@ class FilePath(BaseModel):
 
     path: str
 
-    @field_validator(field="path", mode='after')
+    @field_validator("path", mode='after')
     @classmethod
     def validate_path(cls, path: str) -> str:
         if not path.startswith("/"):
             raise ValueError("Path to file must start with a slash")
+
+        return path
 
 
 class DownloadLink(BaseModel):
@@ -139,8 +141,9 @@ class Order(BaseModel):
     order_time: UtcDatetime
     status: enums.OrderStatus
     product_snapshots: list['ProductSnapshot'] = Field(default_factory=list)
+    checkout: Optional['Checkout'] = None
 
-    @field_validator(field='phone_number', mode='after')
+    @field_validator('phone_number', mode='after')
     @classmethod
     def validate_phone_number(cls, phone_number: str) -> str:
         if not fullmatch(r"^\+\d{6,15}$", phone_number):
@@ -148,7 +151,12 @@ class Order(BaseModel):
 
         return phone_number
 
-    @field_validator(field='product_snapshots', mode='after')
+    @field_validator('email', mode='after')
+    @classmethod
+    def casefold_email(cls, email: str) -> str:
+        return email.casefold()
+
+    @field_validator('product_snapshots', mode='after')
     @classmethod
     def check_for_at_least_one_order_product(cls, products: list['ProductSnapshot']) -> list['ProductSnapshot']:
         if len(products) == 0:
@@ -165,6 +173,15 @@ class ProductSnapshot(BaseModel):
     product_id: int
 
 
+class Checkout(BaseModel):
+    model_config = {"frozen": True}
+
+    id: int | None = None
+    order_id: int
+    provider: enums.CheckoutProvider
+    session_id: str
+
+
 class Account(BaseModel):
     id: int | None = None
     username: str = Field(max_length=MAX_LENGTH_FOR_NAMES)
@@ -173,7 +190,7 @@ class Account(BaseModel):
     password_hash: str
     role: enums.UserRole
 
-    @field_validator(field='phone_number', mode='after')
+    @field_validator('phone_number', mode='after')
     @classmethod
     def validate_phone_number(cls, phone_number: str | None) -> str | None:
         if phone_number is None:
@@ -183,6 +200,11 @@ class Account(BaseModel):
             raise ValueError("Invalid phone number format")
 
         return phone_number
+
+    @field_validator('email', mode='after')
+    @classmethod
+    def casefold_email(cls, email: str) -> str:
+        return email.casefold()
 
 
 class Session(BaseModel):

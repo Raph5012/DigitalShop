@@ -2,7 +2,7 @@ from sqlalchemy import String, Integer, ForeignKey, DateTime, Enum as SAEnum, Nu
 from sqlalchemy.orm import DeclarativeBase, relationship, mapped_column, Mapped
 from datetime import datetime
 from decimal import Decimal
-from database.enums import OrderStatus, UserRole
+from database.enums import OrderStatus, UserRole, CheckoutProvider
 
 
 class Base(DeclarativeBase):
@@ -86,6 +86,18 @@ class OrderTable(Base):
     status: Mapped[OrderStatus] = mapped_column(SAEnum(OrderStatus), nullable=False)
 
     product_snapshots = relationship("ProductSnapshotTable", back_populates="order", cascade="all, delete-orphan")
+    checkout = relationship("CheckoutTable", back_populates="order", cascade="all, delete-orphan", uselist=False)
+
+
+class CheckoutTable(Base):
+    __tablename__ = "checkouts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    order_id: Mapped[int] = mapped_column(Integer, ForeignKey("orders.id"), nullable=False, unique=True)
+    provider: Mapped[CheckoutProvider] = mapped_column(SAEnum(CheckoutProvider), nullable=False)
+    session_id: Mapped[str] = mapped_column(String, nullable=False)
+
+    order = relationship("OrderTable", back_populates="checkout")
 
 
 class ProductSnapshotTable(Base):
