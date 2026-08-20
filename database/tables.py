@@ -69,11 +69,14 @@ class DownloadLinkTable(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     product_id: Mapped[int] = mapped_column(Integer, ForeignKey("products.id"), nullable=False)
+    order_id: Mapped[int] = mapped_column(Integer, ForeignKey("orders.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    token_hash: Mapped[str] = mapped_column(String, nullable=False, unique=True)
 
     product = relationship("ProductTable")
+    order = relationship("OrderTable", back_populates="download_links")
 
 
 class OrderTable(Base):
@@ -86,6 +89,7 @@ class OrderTable(Base):
     status: Mapped[OrderStatus] = mapped_column(SAEnum(OrderStatus), nullable=False)
 
     product_snapshots = relationship("ProductSnapshotTable", back_populates="order", cascade="all, delete-orphan")
+    download_links = relationship("DownloadLinkTable", back_populates="order", cascade="all, delete-orphan")
     checkout = relationship("CheckoutTable", back_populates="order", cascade="all, delete-orphan", uselist=False)
 
 

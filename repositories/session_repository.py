@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from database.tables import SessionTable
 from .models import Session
 from typing import Protocol
@@ -23,6 +23,9 @@ class SessionRepositoryProtocol(Protocol):
     def get_by_account(self, account_id: int) -> list[Session]:
         ...
 
+    def get_valid_by_token_hash(self, token_hash: str) -> Session | None:
+        ...
+
 
 class SessionRepository(SessionRepositoryProtocol):
     def __init__(self, orm_session: OrmSession) -> None:
@@ -35,6 +38,7 @@ class SessionRepository(SessionRepositoryProtocol):
             created_at=session.created_at,
             ends_at=session.ends_at,
             revoked_at=session.revoked_at,
+            session_token_hash=session.session_token_hash
         )
 
     @staticmethod
@@ -45,6 +49,7 @@ class SessionRepository(SessionRepositoryProtocol):
             created_at=session.created_at,
             ends_at=session.ends_at,
             revoked_at=session.revoked_at,
+            session_token_hash=session.session_token_hash
         )
 
     def create(self, session: Session) -> Session:
@@ -66,6 +71,7 @@ class SessionRepository(SessionRepositoryProtocol):
         session_orm.created_at = session.created_at
         session_orm.ends_at = session.ends_at
         session_orm.revoked_at = session.revoked_at
+        session_orm.session_token_hash = session.session_token_hash
 
         self._orm_session.flush()
         return self._to_domain(session_orm)
@@ -89,3 +95,18 @@ class SessionRepository(SessionRepositoryProtocol):
         stmt = select(SessionTable).where(SessionTable.account_id == account_id)
         session_orms = self._orm_session.execute(stmt).scalars().all()
         return [self._to_domain(s) for s in session_orms]
+
+    def get_valid_by_token_hash(self, token_hash: str) -> Session | None:
+        now = datetime.now(timezone.utc)
+        stmt = (
+            select(SessionTable)
+            .where(
+                SessionTable.session_token_hash == token_hash,
+                SessionTable.revoked_at.is_(None),
+                SessionTable.ends_at > now,
+            )
+        )
+        session_orm = self._orm_session.execute(stmt).scalar_one_or_none()
+        if session_orm is None:
+            return None
+        return self._to_domain(session_orm)

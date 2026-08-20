@@ -22,6 +22,9 @@ class CategoryRepositoryProtocol(Protocol):
     def get_category_by_name(self, name: str) -> Category | None:
         ...
 
+    def get_all_categories(self) -> list[Category]:
+        ...
+
 
 class CategoryRepository(CategoryRepositoryProtocol):
     def __init__(self, db_session: Session) -> None:
@@ -77,6 +80,11 @@ class CategoryRepository(CategoryRepositoryProtocol):
             return None
 
         return self.to_domain(category_orm)
+
+    def get_all_categories(self) -> list[Category]:
+        stmt = select(CategoryTable)
+        categories: list[CategoryTable] = list(self._session.scalars(stmt).all())
+        return [self.to_domain(category) for category in categories]
 
     def get_category_by_name(self, name: str) -> Category | None:
         stmt = select(CategoryTable).where(CategoryTable.name == name)
