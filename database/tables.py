@@ -1,4 +1,4 @@
-from sqlalchemy import String, Integer, ForeignKey, DateTime, Enum as SAEnum, Numeric
+from sqlalchemy import String, Integer, ForeignKey, DateTime, Enum as SAEnum, Numeric, Boolean
 from sqlalchemy.orm import DeclarativeBase, relationship, mapped_column, Mapped
 from datetime import datetime
 from decimal import Decimal
@@ -16,6 +16,7 @@ class ProductTable(Base):
     category_id: Mapped[int] = mapped_column(Integer, ForeignKey("categories.id"), nullable=False)
     name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str] = mapped_column(String, nullable=False)
+    hidden: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     product_images = relationship("ProductImageTable", back_populates="product", cascade="all, delete-orphan")
     prices = relationship("PriceTable", back_populates="product", cascade="all, delete-orphan")
@@ -73,7 +74,7 @@ class DownloadLinkTable(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    token_hash: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    token: Mapped[str] = mapped_column(String, nullable=False, unique=True)
 
     product = relationship("ProductTable")
     order = relationship("OrderTable", back_populates="download_links")

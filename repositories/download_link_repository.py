@@ -20,7 +20,7 @@ class DownloadLinkRepositoryProtocol(Protocol):
     def get_download_link_by_id(self, download_link_id: int) -> DownloadLink | None:
         ...
 
-    def get_download_link_by_token_hash(self, token_hash: str) -> DownloadLink | None:
+    def get_download_link_by_token(self, token: str) -> DownloadLink | None:
         ...
 
     def get_download_links_by_order_id(self, order_id: int) -> list[DownloadLink]:
@@ -39,7 +39,7 @@ class DownloadLinkRepository(DownloadLinkRepositoryProtocol):
             created_at=dl.created_at,
             valid_until=dl.valid_until,
             revoked_at=dl.revoked_at,
-            token_hash=dl.token_hash
+            token=dl.token
         )
 
     def _to_domain(self, dl: DownloadLinkTable) -> DownloadLink:
@@ -50,7 +50,7 @@ class DownloadLinkRepository(DownloadLinkRepositoryProtocol):
             created_at=dl.created_at,
             valid_until=dl.valid_until,
             revoked_at=dl.revoked_at,
-            token_hash=dl.token_hash
+            token=dl.token
         )
 
     def create_download_link(self, download_link: DownloadLink) -> DownloadLink:
@@ -74,7 +74,7 @@ class DownloadLinkRepository(DownloadLinkRepositoryProtocol):
         dl_orm.created_at = download_link.created_at
         dl_orm.valid_until = download_link.valid_until
         dl_orm.revoked_at = download_link.revoked_at
-        dl_orm.token_hash = download_link.token_hash
+        dl_orm.token = download_link.token
 
         self._session.flush()
 
@@ -93,8 +93,8 @@ class DownloadLinkRepository(DownloadLinkRepositoryProtocol):
 
         return self._to_domain(dl_orm)
 
-    def get_download_link_by_token_hash(self, token_hash: str) -> DownloadLink | None:
-        stmt = select(DownloadLinkTable).where(DownloadLinkTable.token_hash == token_hash)
+    def get_download_link_by_token(self, token: str) -> DownloadLink | None:
+        stmt = select(DownloadLinkTable).where(DownloadLinkTable.token == token)
         dl_orm: DownloadLinkTable | None = self._session.execute(stmt).scalar_one_or_none()
         if dl_orm is None:
             return None

@@ -73,6 +73,7 @@ class ProductRepository(ProductRepositoryProtocol):
             category_id=orm_product.category_id,
             name=orm_product.name,
             description=orm_product.description,
+            hidden=orm_product.hidden,
             images=[self._image_to_domain(img) for img in orm_product.product_images],
             prices=[self._price_to_domain(price) for price in orm_product.prices],
             download_paths=[self._file_path_to_domain(fp) for fp in orm_product.file_paths]
@@ -118,6 +119,7 @@ class ProductRepository(ProductRepositoryProtocol):
             category_id=product.category_id,
             name=product.name,
             description=product.description,
+            hidden=product.hidden,
             product_images=product_images,
             prices=prices,
             file_paths=file_paths
@@ -137,6 +139,7 @@ class ProductRepository(ProductRepositoryProtocol):
         orm_product.category_id = product.category_id
         orm_product.name = product.name
         orm_product.description = product.description
+        orm_product.hidden = product.hidden
         orm_product.product_images = [self._image_to_orm(img) for img in product.images]
         orm_product.prices = [self._price_to_orm(price) for price in product.prices]
         orm_product.file_paths = [self._file_path_to_orm(fp) for fp in product.download_paths]

@@ -25,6 +25,9 @@ class OrderRepositoryProtocol(Protocol):
     def get_by_email(self, email: str) -> list[Order]:
         ...
 
+    def get_all(self) -> list[Order]:
+        ...
+
 
 class OrderRepository(OrderRepositoryProtocol):
     def __init__(self, session: Session) -> None:
@@ -156,5 +159,9 @@ class OrderRepository(OrderRepositoryProtocol):
         
     def get_by_email(self, email: str) -> list[Order]:
         orm_orders: list[OrderTable] = self._get_orm_orders(email=email)
+        return [self._order_to_domain(order) for order in orm_orders]
+
+    def get_all(self) -> list[Order]:
+        orm_orders: list[OrderTable] = self._get_orm_orders()
         return [self._order_to_domain(order) for order in orm_orders]
         

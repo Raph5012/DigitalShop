@@ -1,5 +1,9 @@
-from repositories.models import Order, ProductSnapshot, Checkout
+from datetime import datetime, timezone
+from decimal import Decimal
+
+from repositories.models import Order, ProductSnapshot, Checkout, Product
 from repositories.order_repository import OrderRepositoryProtocol
+from repositories.product_repository import ProductRepositoryProtocol
 from database.enums import OrderStatus
 from typing import Protocol
 from pydantic import BaseModel, field_validator
@@ -28,7 +32,7 @@ class UpdateOrder(BaseModel):
 
 
 class OrderServiceProtocol(Protocol):
-    def create(self, order: Order) -> Order:
+    def create(self, product_ids: list[int], email: str, phone_number: str) -> Order:
         ...
 
     def get(self, order_id: int, email: str) -> Order | None:
@@ -56,12 +60,24 @@ class OrderServiceProtocol(Protocol):
     def get_by_id(self, order_id: int) -> Order | None:
         ...
 
+    def get_all(self) -> list[Order]:
+        ...
+
+    # webhook
+    def confirm_payment_from_webhook(self, order_id: int) -> None:
+        ...
+
+    def cancel_from_webhook(self, order_id: int) -> None:
+        ...
+
 
 class OrderService(OrderServiceProtocol):
     def __init__(self, 
                  order_repository: OrderRepositoryProtocol,
+                 product_repository: ProductRepositoryProtocol,
                  integrations: dict[CheckoutProvider, PaymentProviderIntegration]) -> None:
         self._repo = order_repository
+        self._product_repo = product_repository
         self._integrations = integrations
 
     def _map_integration(self, provider: CheckoutProvider) -> PaymentProviderIntegration:
@@ -71,8 +87,42 @@ class OrderService(OrderServiceProtocol):
 
         return integration
 
-    def create(self, order: Order) -> Order:
+    def create(self, product_ids: list[int], email: str, phone_number: str) -> Order:
+        if not product_ids:
+            raise ValueError("Product ids must not be empty")
+
+        snapshots: list[ProductSnapshot] = []
+        for product_id in product_ids:
+            product: Product | None = self._product_repo.get_by_id(product_id)
+            if product is None:
+                raise NotFoundException(f"Product with id={product_id} not found")
+
+            price: Decimal | None = self._get_current_price(product)
+            if price is None:
+                raise ValueError(f"Product with id={product_id} has no active price")
+
+            snapshots.append(ProductSnapshot(
+                name=product.name,
+                price=price,
+                product_id=product_id,
+            ))
+
+        order = Order(
+            phone_number=phone_number,
+            email=email,
+            order_time=datetime.now(timezone.utc),
+            status=OrderStatus.pending,
+            product_snapshots=snapshots,
+        )
+
         return self._repo.create(order)
+
+    def _get_current_price(self, product: Product) -> Decimal | None:
+        for price in product.prices:
+            if price.is_active_now():
+                return price.price
+
+        return None
 
     def get(self, order_id: int, email: str) -> Order | None:
         order: Order | None = self._repo.get_by_id(order_id)
@@ -171,3 +221,40 @@ class OrderService(OrderServiceProtocol):
 
     def get_by_id(self, order_id: int) -> Order | None:
         return self._repo.get_by_id(order_id)
+
+    def get_all(self) -> list[Order]:
+        return self._repo.get_all()
+
+    # webhook
+    def confirm_payment_from_webhook(self, order_id: int) -> None:
+        order: Order | None = self._repo.get_by_id(order_id)
+        if order is None:
+            raise NotFoundException(f"Couldn't find order with id={order_id}")
+
+        if order.checkout is None:
+            raise ValueError("No checkout session found for this order")
+
+        if order.status == OrderStatus.paid:
+            return  # idempotencja — event mógł przyjść więcej niż raz
+
+        if order.status != OrderStatus.pending:
+            raise ValueError(f"Cannot confirm payment for order status={order.status}")
+
+        order.status = OrderStatus.paid
+        self._repo.update(order)
+
+    def cancel_from_webhook(self, order_id: int) -> None:
+        order: Order | None = self._repo.get_by_id(order_id)
+        if order is None:
+            raise NotFoundException(f"Couldn't find order with id={order_id}")
+
+        if order.status == OrderStatus.cancelled:
+            return  # idempotencja
+
+        if order.status != OrderStatus.pending:
+            raise ValueError(f"Cannot cancel order with status={order.status}")
+
+        order.status = OrderStatus.cancelled
+        self._repo.update(order)
+
+    

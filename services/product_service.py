@@ -92,14 +92,14 @@ class ProductService(ProductServiceProtocol):
 
     def get_preview(self, product_id: int) -> ProductPreview | None:
         product: Product | None = self._repo.get_by_id(product_id)
-        if product is None:
+        if product is None or product.hidden:
             return None
 
         return self._product_to_preview(product)
 
     def get_details(self, product_id: int) -> ProductDetails | None:
         product: Product | None = self._repo.get_by_id(product_id)
-        if product is None:
+        if product is None or product.hidden:
             return None
 
         return ProductDetails(
@@ -117,4 +117,5 @@ class ProductService(ProductServiceProtocol):
         else:
             products: list[Product] = self._repo.get_products_by_category(category_id)
 
-        return [self._product_to_preview(product) for product in products]
+        visible = [product for product in products if not product.hidden]
+        return [self._product_to_preview(product) for product in visible]

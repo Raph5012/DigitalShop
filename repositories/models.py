@@ -41,6 +41,7 @@ class Product(BaseModel):
     category_id: int
     name: str = Field(max_length=MAX_LENGTH_FOR_NAMES)
     description: str
+    hidden: bool = False
 
     images: list['ProductImage'] = Field(default_factory=list)
     prices: list['ProductPrice'] = Field(default_factory=list)
@@ -133,7 +134,7 @@ class DownloadLink(BaseModel):
     created_at: UtcDatetime
     valid_until: UtcDatetimeOrNone
     revoked_at: UtcDatetimeOrNone
-    token_hash: str
+    token: str
 
 
 class Order(BaseModel):

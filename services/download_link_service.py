@@ -1,5 +1,4 @@
-import hashlib
-import secrets
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Protocol
 
@@ -22,10 +21,10 @@ class DownloadLinkServiceProtocol(Protocol):
     def remove(self, download_link_id: int) -> None:
         ...
 
-    def resolve(self, raw_token: str) -> DownloadLink:
+    def resolve(self, token: str) -> DownloadLink:
         ...
 
-    def revoke(self, raw_token: str) -> None:
+    def revoke(self, token: str) -> None:
         ...
 
     def revoke_for_order(self, order_id: int) -> int:
@@ -44,12 +43,8 @@ class DownloadLinkService(DownloadLinkServiceProtocol):
         self._links = links
         self._lifetime = lifetime
 
-    @staticmethod
-    def _hash_token(raw_token: str) -> str:
-        return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
-    
     def create_link(self, order_id: int, product_id: int, lifetime: bool = True) -> str:
-        raw_token: str = secrets.token_urlsafe(32)
+        token: str = str(uuid.uuid4())
         now: datetime = datetime.now(timezone.utc)
 
         self._links.create_download_link(
@@ -59,11 +54,11 @@ class DownloadLinkService(DownloadLinkServiceProtocol):
                 created_at=now,
                 valid_until=(now + self._lifetime) if lifetime else None,
                 revoked_at=None,
-                token_hash=self._hash_token(raw_token)
+                token=token
             )
         )
 
-        return raw_token
+        return token
 
     def create_links(self, order_id: int, product_ids: list[int], lifetime: bool = True) -> list[str]:
         return [self.create_link(order_id, product_id, lifetime) for product_id in product_ids]
@@ -74,10 +69,8 @@ class DownloadLinkService(DownloadLinkServiceProtocol):
     def remove(self, download_link_id: int) -> None:
         self._links.remove_download_link(download_link_id)
 
-    def resolve(self, raw_token: str) -> DownloadLink:
-        link: DownloadLink | None = self._links.get_download_link_by_token_hash(
-            self._hash_token(raw_token)
-        )
+    def resolve(self, token: str) -> DownloadLink:
+        link: DownloadLink | None = self._links.get_download_link_by_token(token)
 
         if link is None:
             raise NotFoundException("Download link not found")
@@ -90,10 +83,8 @@ class DownloadLinkService(DownloadLinkServiceProtocol):
 
         return link
 
-    def revoke(self, raw_token: str) -> None:
-        link: DownloadLink | None = self._links.get_download_link_by_token_hash(
-            self._hash_token(raw_token)
-        )
+    def revoke(self, token: str) -> None:
+        link: DownloadLink | None = self._links.get_download_link_by_token(token)
 
         if link is None or link.revoked_at is not None:
             return
